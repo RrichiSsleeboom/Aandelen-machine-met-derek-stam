@@ -1,0 +1,61 @@
+# ============================================================
+# AI Koop-Signaal Machine - Configuratie
+# ============================================================
+
+# --- Assets om te monitoren ---
+crypto:
+  - id: bitcoin
+    symbol: BTC
+  - id: ethereum
+    symbol: ETH
+  # Voeg meer toe, bijv:
+  # - id: solana
+  #   symbol: SOL
+  # - id: cardano
+  #   symbol: ADA
+
+stocks:
+  - symbol: AAPL
+  - symbol: NVDA
+  # Voeg meer toe, bijv:
+  # - symbol: MSFT
+  # - symbol: TSLA
+  # - symbol: ASML
+  # - symbol: SHELL.AS   # Nederlandse aandelen via Yahoo Finance
+
+# --- Signaal drempelwaarden ---
+signals:
+  # Minimaal aantal indicatoren dat positief moet zijn voor een koop-signaal (van de 5)
+  min_indicators_required: 3
+
+  # Minimum confidence percentage (= min_indicators_required / 5 * 100)
+  min_confidence: 60
+
+  # RSI drempel voor oversold conditie
+  rsi_oversold: 35
+
+  # Volume multiplier: huidig volume moet X keer het gemiddelde zijn
+  volume_multiplier: 1.5
+
+  # Hoeveel dagen terug voor volume gemiddelde
+  volume_avg_period: 20
+
+# --- Service instellingen ---
+service:
+  # Scan interval in seconden (60 = elke minuut)
+  scan_interval_seconds: 60
+
+  # Hoe lang (in uren) een signaal geldig is voor deduplicatie
+  # (geen tweede email voor hetzelfde asset binnen dit tijdvenster)
+  signal_cooldown_hours: 4
+
+# --- Backtest instellingen ---
+backtest:
+  # Hoeveel jaar historische data gebruiken
+  lookback_years: 1
+
+  # Een "win" is als de prijs >= dit percentage stijgt binnen forward_days
+  min_gain_percent: 2.0
+
+  # Hoeveel handelsdagen vooruit kijken na een signaal
+  forward_days: 5
