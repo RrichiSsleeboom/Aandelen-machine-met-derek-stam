@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Koop-Signaal Machine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    header h1 span { color: #64b5f6; }
+
+    #status-bar {
+      font-size: 13px;
+      color: #90caf9;
+      text-align: right;
+    }
+
+    #status-bar .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #4caf50;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    #status-bar .dot.scanning { background: #ff9800; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.8px; }
+    .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .card .value.green { color: #3fb950; }
+    .card .value.orange { color: #f78166; }
+    .card .value.blue { color: #58a6ff; }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .signal-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .signal-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+
+    .signal-card.buy {
+      border-color: #3fb950;
+      box-shadow: 0 0 0 1px #3fb95044, 0 0 20px rgba(63,185,80,0.08);
+    }
+
+    .signal-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .signal-header .asset-name { font-size: 18px; font-weight: 700; }
+
+    .signal-header .asset-type {
+      font-size: 11px;
+      color: #8b949e;
+      background: #21262d;
+      border-radius: 20px;
+      padding: 2px 8px;
+      margin-left: 8px;
+    }
+
+    .badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .badge.buy { background: #3fb95022; color: #3fb950; border: 1px solid #3fb950; }
+    .badge.hold { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+
+    .signal-body { padding: 14px 18px; }
+    .price { font-size: 22px; font-weight: 700; color: #58a6ff; margin-bottom: 12px; }
+
+    .conf-label { font-size: 12px; color: #8b949e; margin-bottom: 5px; }
+    .conf-bar-wrap {
+      background: #21262d;
+      border-radius: 20px;
+      height: 12px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .conf-bar { height: 100%; border-radius: 20px; transition: width 0.5s ease; }
+    .conf-pct { font-size: 13px; font-weight: 700; text-align: right; }
+
+    .indicators { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .ind-chip { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+    .ind-chip.active { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95066; }
+    .ind-chip.inactive { background: #21262d; color: #484f58; border: 1px solid #30363d; }
+
+    .loading { text-align: center; padding: 60px 20px; color: #8b949e; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: #3d1a1a;
+      border: 1px solid #f8514922;
+      border-radius: 8px;
+      padding: 16px 20px;
+      color: #f85149;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #484f58;
+      font-size: 12px;
+      border-top: 1px solid #21262d;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>AI Koop-Signaal <span>Machine</span></h1>
+  <div id="status-bar">
+    <span class="dot" id="dot"></span>
+    <span id="status-text">Verbinden...</span>
+  </div>
+</header>
+
+<div class="container">
+  <div id="error-container"></div>
+
+  <div class="summary-row">
+    <div class="card">
+      <div class="label">Gescande Assets</div>
+      <div class="value blue" id="total-assets">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Koop Signalen</div>
+      <div class="value green" id="buy-count">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Geen Signaal</div>
+      <div class="value" id="hold-count">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Laatste Scan</div>
+      <div class="value blue" style="font-size:15px; margin-top:8px;" id="last-scan">–</div>
+    </div>
+  </div>
+
+  <div class="section-title">Signaal Overzicht</div>
+  <div id="signals-container">
+    <div class="loading">
+      <div class="spinner"></div>
+      Eerste scan wordt uitgevoerd... (kan ~30 sec duren)
+    </div>
+  </div>
+</div>
+
+<footer>
+  AI Koop-Signaal Machine &mdash; Automatisch vernieuwen elke 30 seconden &mdash; Geen financieel advies
+</footer>
+
+<script>
+  function confColor(pct) {
+    if (pct >= 80) return '#3fb950';
+    if (pct >= 60) return '#f0883e';
+    return '#484f58';
+  }
+
+  function formatPrice(p) {
+    if (p >= 1000) return '$' + p.toLocaleString('nl-NL', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (p >= 1)    return '$' + p.toLocaleString('nl-NL', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+    return '$' + p.toFixed(6);
+  }
+
+  function renderCard(sig) {
+    const isBuy = sig.is_buy;
+    const conf  = sig.confidence;
+    const color = confColor(conf);
+
+    const chips = sig.all_indicators.map(ind => {
+      const active = sig.active_indicators.includes(ind);
+      return `<span class="ind-chip ${active ? 'active' : 'inactive'}">${active ? '\u2713' : '\u2717'} ${ind}</span>`;
+    }).join('');
+
+    return `
+      <div class="signal-card ${isBuy ? 'buy' : ''}">
+        <div class="signal-header">
+          <div>
+            <span class="asset-name">${sig.asset}</span>
+            <span class="asset-type">${sig.asset_type.toUpperCase()}</span>
+          </div>
+          <span class="badge ${isBuy ? 'buy' : 'hold'}">${isBuy ? '\uD83D\uDCC8 KOOP' : '\u23F3 WACHT'}</span>
+        </div>
+        <div class="signal-body">
+          <div class="price">${formatPrice(sig.price)}</div>
+          <div class="conf-label">Betrouwbaarheid</div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar" style="width:${conf}%; background:${color};"></div>
+          </div>
+          <div class="conf-pct" style="color:${color};">${conf.toFixed(0)}%</div>
+          <div class="indicators">${chips}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function fetchAndRender() {
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('status-text');
+
+    try {
+      const resp = await fetch('/api/status');
+      const data = await resp.json();
+
+      if (data.scanning) {
+        dot.className = 'dot scanning';
+        statusText.textContent = 'Scannen...';
+      } else {
+        dot.className = 'dot';
+        statusText.textContent = data.last_scan ? `Laatste scan: ${data.last_scan}` : 'Wachten op eerste scan...';
+      }
+
+      const errBox = document.getElementById('error-container');
+      if (data.error) {
+        errBox.innerHTML = `<div class="error-box">&#9888;&#65039; Scan fout: ${data.error}</div>`;
+      } else {
+        errBox.innerHTML = '';
+      }
+
+      const sigs = data.signals || [];
+      const buys = sigs.filter(s => s.is_buy);
+      document.getElementById('total-assets').textContent = sigs.length || '\u2013';
+      document.getElementById('buy-count').textContent   = buys.length;
+      document.getElementById('hold-count').textContent  = sigs.length - buys.length;
+      document.getElementById('last-scan').textContent   = data.last_scan || '\u2013';
+
+      const container = document.getElementById('signals-container');
+      if (sigs.length === 0) {
+        if (!data.scanning) {
+          container.innerHTML = '<div class="loading">Geen data ontvangen. Controleer je internetverbinding.</div>';
+        }
+        return;
+      }
+
+      const sorted = [...sigs].sort((a, b) => {
+        if (a.is_buy !== b.is_buy) return b.is_buy - a.is_buy;
+        return b.confidence - a.confidence;
+      });
+
+      container.innerHTML = `<div class="signals-grid">${sorted.map(renderCard).join('')}</div>`;
+
+    } catch (e) {
+      document.getElementById('status-text').textContent = 'Verbindingsfout';
+      dot.className = 'dot scanning';
+    }
+  }
+
+  fetchAndRender();
+  setInterval(fetchAndRender, 30000);
+</script>
+</body>
+</html>

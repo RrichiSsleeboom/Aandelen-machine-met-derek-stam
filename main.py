@@ -4,14 +4,15 @@ AI Koop-Signaal Machine - Aandelen & Crypto Monitor
 ====================================================
 
 Gebruik:
-  python main.py --scan       Eenmalige scan van alle assets, toont signalen
-  python main.py --service    Realtime monitoring (elke minuut), stuurt email bij signaal
-  python main.py --backtest   Test de strategie op historische data (win-rate validatie)
+  python main.py --scan        Eenmalige scan van alle assets, toont signalen
+  python main.py --service     Realtime monitoring (elke minuut), stuurt email bij signaal
+  python main.py --backtest    Test de strategie op historische data (win-rate validatie)
+  python main.py --dashboard   Live web dashboard op http://localhost:5000
 
 Setup:
   1. pip install -r requirements.txt
   2. cp .env.example .env   en vul je Gmail gegevens in
-  3. python main.py --service
+  3. python main.py --dashboard
 """
 
 import argparse
@@ -70,7 +71,7 @@ def scan_all(config: dict, verbose: bool = True) -> list:
             )
             results.append(sig)
             if verbose:
-                status = "🟢 KOOP" if sig.is_buy else "⚪ geen"
+                status = "\U0001f7e2 KOOP" if sig.is_buy else "\u26aa geen"
                 print(f"{status} | Confidence: {sig.confidence:.0f}%")
         except Exception as e:
             if verbose:
@@ -96,7 +97,7 @@ def scan_all(config: dict, verbose: bool = True) -> list:
             )
             results.append(sig)
             if verbose:
-                status = "🟢 KOOP" if sig.is_buy else "⚪ geen"
+                status = "\U0001f7e2 KOOP" if sig.is_buy else "\u26aa geen"
                 print(f"{status} | Confidence: {sig.confidence:.0f}%")
         except Exception as e:
             if verbose:
@@ -108,7 +109,7 @@ def scan_all(config: dict, verbose: bool = True) -> list:
 def run_scan(config: dict) -> None:
     """Eenmalige scan met output."""
     print("\n" + "=" * 60)
-    print(f"AI Koop-Signaal Machine — Scan op {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
+    print(f"AI Koop-Signaal Machine \u2014 Scan op {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
     print("=" * 60)
 
     results = scan_all(config)
@@ -117,7 +118,7 @@ def run_scan(config: dict) -> None:
 
     print(f"\n{'=' * 60}")
     if buy_signals:
-        print(f"🚨 {len(buy_signals)} KOOP SIGNAAL(EN) GEVONDEN:")
+        print(f"\U0001f6a8 {len(buy_signals)} KOOP SIGNAAL(EN) GEVONDEN:")
         print("-" * 60)
         for sig in buy_signals:
             print(str(sig))
@@ -134,10 +135,8 @@ def run_service(config: dict) -> None:
     interval = config.get("service", {}).get("scan_interval_seconds", 60)
     cooldown_hours = config.get("service", {}).get("signal_cooldown_hours", 4)
 
-    # Dict: asset -> tijdstip laatste email signaal
     last_notified: Dict[str, datetime] = {}
 
-    # Graceful shutdown
     running = {"active": True}
 
     def _shutdown(signum, frame):
@@ -148,7 +147,7 @@ def run_service(config: dict) -> None:
     signal.signal(signal.SIGTERM, _shutdown)
 
     print(f"\n{'=' * 60}")
-    print("AI Koop-Signaal Machine — SERVICE MODUS")
+    print("AI Koop-Signaal Machine \u2014 SERVICE MODUS")
     print(f"Scan interval: {interval} seconden")
     print(f"Cooldown: {cooldown_hours} uur per asset")
     print("Druk op Ctrl+C om te stoppen.")
@@ -174,13 +173,13 @@ def run_service(config: dict) -> None:
                 cooldown_expired = (last is None) or (now - last > timedelta(hours=cooldown_hours))
 
                 if cooldown_expired:
-                    print(f"  🚨 KOOP SIGNAAL: {sig.asset} | Confidence: {sig.confidence:.0f}% | Prijs: ${sig.current_price:,.4f}")
+                    print(f"  \U0001f6a8 KOOP SIGNAAL: {sig.asset} | Confidence: {sig.confidence:.0f}% | Prijs: ${sig.current_price:,.4f}")
                     sent = email_notifier.send_buy_signal(sig)
                     if sent:
                         last_notified[sig.asset] = now
                 else:
                     remaining = cooldown_hours - (now - last).total_seconds() / 3600
-                    print(f"  ℹ️  {sig.asset}: signaal actief maar cooldown ({remaining:.1f}u resterend)")
+                    print(f"  \u2139\ufe0f  {sig.asset}: signaal actief maar cooldown ({remaining:.1f}u resterend)")
         else:
             total = len(results)
             print(f"  Geen koop-signalen ({total} assets gescand)")
@@ -209,7 +208,7 @@ def run_backtest(config: dict) -> None:
     period = f"{lookback_years}y"
 
     print(f"\n{'=' * 60}")
-    print("BACKTEST — Historische win-rate validatie")
+    print("BACKTEST \u2014 Historische win-rate validatie")
     print(f"Lookback: {lookback_years} jaar | Min stijging: {min_gain}% | Forward: {forward_days} dagen")
     print("=" * 60)
 
@@ -261,25 +260,28 @@ def run_backtest(config: dict) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="AI Koop-Signaal Machine — Crypto & Aandelen Monitor",
+        description="AI Koop-Signaal Machine \u2014 Crypto & Aandelen Monitor",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Voorbeelden:
-  python main.py --scan       Eenmalige scan
-  python main.py --service    Start realtime monitoring
-  python main.py --backtest   Valideer win-rate op historische data
+  python main.py --scan        Eenmalige scan
+  python main.py --service     Start realtime monitoring
+  python main.py --backtest    Valideer win-rate op historische data
+  python main.py --dashboard   Open web dashboard in browser
         """,
     )
     parser.add_argument("--scan", action="store_true", help="Eenmalige scan van alle assets")
     parser.add_argument("--service", action="store_true", help="Start realtime monitoring service")
     parser.add_argument("--backtest", action="store_true", help="Backtest strategie op historische data")
+    parser.add_argument("--dashboard", action="store_true", help="Start web dashboard op http://localhost:5000")
+    parser.add_argument("--port", type=int, default=5000, help="Poort voor web dashboard (standaard: 5000)")
     parser.add_argument("--config", default="config/settings.yaml", help="Pad naar configuratiebestand")
 
     args = parser.parse_args()
 
-    if not (args.scan or args.service or args.backtest):
+    if not (args.scan or args.service or args.backtest or args.dashboard):
         parser.print_help()
-        print("\nGebruik --scan, --service, of --backtest")
+        print("\nGebruik --scan, --service, --backtest of --dashboard")
         sys.exit(1)
 
     config = load_config(args.config)
@@ -290,6 +292,9 @@ Voorbeelden:
         run_service(config)
     elif args.backtest:
         run_backtest(config)
+    elif args.dashboard:
+        from src.web.app import start_dashboard
+        start_dashboard(port=args.port)
 
 
 if __name__ == "__main__":
