@@ -59,3 +59,32 @@ backtest:
 
   # Hoeveel handelsdagen vooruit kijken na een signaal
   forward_days: 5
+
+# --- Global Market Sentinel instellingen ---
+sentinel:
+  # Scan interval in seconden (1800 = 30 minuten)
+  scan_interval_seconds: 1800
+
+  # Minimum confidence score (1-10) voor Telegram melding
+  confidence_threshold: 7
+
+  # Aantal parallelle workers voor data-ophaling
+  max_workers: 20
+
+  # Cooldown in uren voor dezelfde ticker (geen dubbele meldingen)
+  cooldown_hours: 4
+
+  # SQLite database pad
+  db_path: data/sentinel.db
+
+  # Top N crypto pairs van Binance
+  crypto_limit: 500
+
+  # Nieuws zoekwoorden (bullish triggers)
+  news_keywords:
+    - merger
+    - earnings beat
+    - partnership
+    - acquisition
+    - revenue beat
+    - buyout
