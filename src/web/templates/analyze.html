@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aandelen-Analyse Machine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+      padding: 20px 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    header h1 span { color: #64b5f6; }
+    header nav { margin-top: 8px; font-size: 13px; }
+    header nav a { color: #90caf9; text-decoration: none; margin-right: 16px; }
+    header nav a:hover { text-decoration: underline; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .form-row {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .form-row input[type="text"], .form-row select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      min-width: 160px;
+    }
+
+    .form-row input[type="text"] { flex: 1; min-width: 200px; }
+
+    .form-row button {
+      background: #1f6feb;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .form-row button:hover { background: #2877f5; }
+    .form-row button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+    .form-row .hint { font-size: 12px; color: #8b949e; width: 100%; margin-top: 4px; }
+
+    .summary {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .summary .stock-name { font-size: 22px; font-weight: 700; }
+    .summary .stock-meta { font-size: 13px; color: #8b949e; margin-top: 4px; }
+
+    .summary .stat .label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.6px; }
+    .summary .stat .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .summary .stat .value.blue { color: #58a6ff; }
+
+    .badge-big {
+      font-size: 18px;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 30px;
+      text-align: center;
+    }
+    .badge-big.koop { background: #3fb95022; color: #3fb950; border: 2px solid #3fb950; }
+    .badge-big.hold { background: #f0883e22; color: #f0883e; border: 2px solid #f0883e; }
+    .badge-big.verkoop { background: #f8514922; color: #f85149; border: 2px solid #f85149; }
+
+    .section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 14px 22px;
+      background: #21262d;
+      border-bottom: 1px solid #30363d;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #64b5f6;
+    }
+
+    .section-body { padding: 18px 22px; }
+    .section-body ul { list-style: none; }
+    .section-body li {
+      padding: 8px 0 8px 24px;
+      position: relative;
+      font-size: 14px;
+      line-height: 1.6;
+      border-bottom: 1px solid #21262d;
+    }
+    .section-body li:last-child { border-bottom: none; }
+    .section-body li::before {
+      content: "▸";
+      position: absolute;
+      left: 6px;
+      color: #58a6ff;
+    }
+
+    .peers-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .peers-table th, .peers-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+      text-align: right;
+    }
+    .peers-table th { color: #8b949e; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.6px; }
+    .peers-table td:first-child, .peers-table th:first-child { text-align: left; }
+
+    .scenarios {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .scenario-card {
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #30363d;
+    }
+    .scenario-card.bullish { border-color: #3fb95066; background: #3fb95011; }
+    .scenario-card.bearish { border-color: #f8514966; background: #f8514911; }
+    .scenario-card.base    { border-color: #58a6ff66; background: #58a6ff11; }
+
+    .scenario-card .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+    .scenario-card .target { font-size: 28px; font-weight: 700; margin-top: 8px; }
+    .scenario-card .pct { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .scenario-card .pct.up { color: #3fb950; }
+    .scenario-card .pct.down { color: #f85149; }
+    .scenario-card .prob { font-size: 12px; color: #8b949e; margin-top: 4px; }
+    .scenario-card .rationale { font-size: 12px; color: #c9d1d9; margin-top: 12px; line-height: 1.5; }
+
+    .conclusie-card { background: #161b22; border: 2px solid #58a6ff; border-radius: 12px; padding: 20px; }
+    .conclusie-card .text { font-size: 15px; line-height: 1.6; }
+    .conclusie-card .instap { margin-top: 14px; padding-top: 14px; border-top: 1px solid #30363d; font-size: 14px; color: #c9d1d9; }
+    .conclusie-card .instap b { color: #64b5f6; }
+
+    .loading { text-align: center; padding: 60px 20px; color: #8b949e; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: #3d1a1a;
+      border: 1px solid #f8514944;
+      border-radius: 8px;
+      padding: 16px 20px;
+      color: #f85149;
+      margin-bottom: 20px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #484f58;
+      font-size: 12px;
+      border-top: 1px solid #21262d;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 720px) {
+      .summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Aandelen-Analyse <span>Machine</span></h1>
+  <nav>
+    <a href="/">← Scanner dashboard</a>
+    <a href="/analyze">Analyse</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="form-row">
+    <input id="sym" type="text" placeholder="Ticker (bijv. AAPL, NVDA, ASML.AS)" value="AAPL" />
+    <select id="term">
+      <option value="short">Korte termijn (1-3 mnd)</option>
+      <option value="medium" selected>Middellange termijn (6-12 mnd)</option>
+      <option value="long">Lange termijn (2-3 jr)</option>
+    </select>
+    <button id="go">Analyseer</button>
+    <div class="hint">Genereert een 5-delig rapport: huidige status, kansrijke signalen, risico's, voorspelling, conclusie.</div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<footer>
+  Automatisch gegenereerd op basis van publieke data — geen financieel advies.
+</footer>
+
+<script>
+  function fmtPct(v) {
+    if (v === null || v === undefined) return 'n.v.t.';
+    return (v * 100).toFixed(1) + '%';
+  }
+  function fmtMoney(v) {
+    if (v === null || v === undefined) return 'n.v.t.';
+    var abs = Math.abs(v);
+    if (abs >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'B';
+    if (abs >= 1e9)  return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (abs >= 1e6)  return '$' + (v / 1e6).toFixed(1) + 'M';
+    return '$' + v.toFixed(2);
+  }
+  function fmtPrice(v) {
+    if (v === null || v === undefined) return 'n.v.t.';
+    return '$' + v.toLocaleString('nl-NL', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
+  function listSection(title, items) {
+    var lis = items.map(function(i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('');
+    return ''
+      + '<div class="section">'
+      + '  <div class="section-header">' + title + '</div>'
+      + '  <div class="section-body"><ul>' + lis + '</ul></div>'
+      + '</div>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function actionClass(a) {
+    if (a === 'Koop') return 'koop';
+    if (a === 'Verkoop') return 'verkoop';
+    return 'hold';
+  }
+
+  function scenarioClass(label) {
+    if (label === 'Bullish') return 'bullish';
+    if (label === 'Bearish') return 'bearish';
+    return 'base';
+  }
+
+  function renderPeers(peers) {
+    if (!peers || peers.length === 0) return '';
+    var rows = peers.map(function(p) {
+      return ''
+        + '<tr>'
+        + '<td>' + escapeHtml(p.symbol) + ' — ' + escapeHtml(p.name || '') + '</td>'
+        + '<td>' + (p.pe_ratio ? p.pe_ratio.toFixed(1) : 'n.v.t.') + '</td>'
+        + '<td>' + fmtPct(p.profit_margin) + '</td>'
+        + '<td>' + fmtPct(p.revenue_growth) + '</td>'
+        + '<td>' + fmtMoney(p.market_cap) + '</td>'
+        + '</tr>';
+    }).join('');
+    return ''
+      + '<table class="peers-table">'
+      + '<thead><tr><th>Concurrent</th><th>P/E</th><th>Nettomarge</th><th>Omzetgroei</th><th>Marktkap.</th></tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table>';
+  }
+
+  function renderScenarios(scenarios) {
+    var cards = scenarios.map(function(s) {
+      var pctClass = s.return_pct >= 0 ? 'up' : 'down';
+      var sign = s.return_pct >= 0 ? '+' : '';
+      return ''
+        + '<div class="scenario-card ' + scenarioClass(s.label) + '">'
+        + '  <div class="label">' + escapeHtml(s.label) + '</div>'
+        + '  <div class="target">' + fmtPrice(s.target_price) + '</div>'
+        + '  <div class="pct ' + pctClass + '">' + sign + s.return_pct.toFixed(1) + '%</div>'
+        + '  <div class="prob">Kans: ' + Math.round(s.probability * 100) + '%</div>'
+        + '  <div class="rationale">' + escapeHtml(s.rationale) + '</div>'
+        + '</div>';
+    }).join('');
+    return '<div class="scenarios">' + cards + '</div>';
+  }
+
+  function render(a) {
+    var f = a.fundamentals;
+    var t = a.technicals;
+
+    var summary = ''
+      + '<div class="summary">'
+      + '  <div>'
+      + '    <div class="stock-name">' + escapeHtml(a.symbol) + ' — ' + escapeHtml(f.company_name) + '</div>'
+      + '    <div class="stock-meta">' + escapeHtml(f.sector) + ' / ' + escapeHtml(f.industry) + ' &nbsp;•&nbsp; ' + escapeHtml(a.term_label) + '</div>'
+      + '  </div>'
+      + '  <div class="stat"><div class="label">Huidige prijs</div><div class="value blue">' + fmtPrice(t.current_price) + '</div></div>'
+      + '  <div class="stat"><div class="label">Score</div><div class="value">' + (a.score >= 0 ? '+' : '') + a.score.toFixed(0) + '</div></div>'
+      + '  <div class="badge-big ' + actionClass(a.actie) + '">' + escapeHtml(a.actie.toUpperCase()) + '</div>'
+      + '</div>';
+
+    var sectie1 = ''
+      + '<div class="section">'
+      + '  <div class="section-header">1. Huidige status — winst, omzet, sterke punten</div>'
+      + '  <div class="section-body">'
+      + '    <ul>' + a.huidige_status.map(function(s){return '<li>' + escapeHtml(s) + '</li>';}).join('') + '</ul>'
+      + (a.peers && a.peers.length ? renderPeers(a.peers) : '')
+      + '  </div>'
+      + '</div>';
+
+    var sectie2 = listSection('2. Kansrijke signalen — trends &amp; technische signalen', a.kansrijke_signalen);
+    var sectie3 = listSection('3. Risico\'s — macro, concurrentie, bedrijfsspecifiek', a.risicos);
+
+    var sectie4 = ''
+      + '<div class="section">'
+      + '  <div class="section-header">4. Voorspelling — drie scenario\'s (' + escapeHtml(a.term_label) + ')</div>'
+      + '  <div class="section-body">' + renderScenarios(a.scenarios) + '</div>'
+      + '</div>';
+
+    var sectie5 = ''
+      + '<div class="section">'
+      + '  <div class="section-header">5. Conclusie &amp; instapmoment</div>'
+      + '  <div class="section-body">'
+      + '    <div class="conclusie-card">'
+      + '      <div class="text">' + escapeHtml(a.conclusie) + '</div>'
+      + '      <div class="instap"><b>Slim instapmoment:</b> ' + escapeHtml(a.instapmoment) + '</div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+
+    document.getElementById('result').innerHTML = summary + sectie1 + sectie2 + sectie3 + sectie4 + sectie5;
+  }
+
+  async function analyze() {
+    var sym = document.getElementById('sym').value.trim();
+    var term = document.getElementById('term').value;
+    var btn = document.getElementById('go');
+    var result = document.getElementById('result');
+
+    if (!sym) { result.innerHTML = '<div class="error-box">Voer eerst een ticker in.</div>'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Analyseren...';
+    result.innerHTML = '<div class="loading"><div class="spinner"></div>Data ophalen en rapport opbouwen voor ' + escapeHtml(sym) + '...</div>';
+
+    try {
+      var resp = await fetch('/api/analyze?symbol=' + encodeURIComponent(sym) + '&term=' + encodeURIComponent(term));
+      var data = await resp.json();
+      if (!resp.ok || data.error) {
+        result.innerHTML = '<div class="error-box">⚠️ ' + escapeHtml(data.error || ('Status ' + resp.status)) + '</div>';
+        return;
+      }
+      render(data);
+    } catch (e) {
+      result.innerHTML = '<div class="error-box">⚠️ Netwerkfout: ' + escapeHtml(e.message) + '</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Analyseer';
+    }
+  }
+
+  document.getElementById('go').addEventListener('click', analyze);
+  document.getElementById('sym').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') analyze();
+  });
+
+  // Auto-run met default
+  analyze();
+</script>
+</body>
+</html>

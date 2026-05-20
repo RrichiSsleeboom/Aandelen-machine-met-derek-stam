@@ -6,10 +6,11 @@ Open in je browser: http://localhost:5000
 
 import threading
 import time
+from dataclasses import asdict
 from datetime import datetime
 
 import yaml
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
@@ -78,6 +79,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/analyze")
+def analyze_page():
+    return render_template("analyze.html")
+
+
 @app.route("/api/status")
 def api_status():
     with _state_lock:
@@ -87,6 +93,28 @@ def api_status():
             "scanning": _state["scanning"],
             "error": _state["error"],
         })
+
+
+@app.route("/api/analyze")
+def api_analyze():
+    """Genereer een uitgebreid 5-delig analyserapport voor één aandeel."""
+    symbol = (request.args.get("symbol") or "").strip().upper()
+    term = (request.args.get("term") or "medium").strip().lower()
+    if not symbol:
+        return jsonify({"error": "Geen 'symbol' parameter opgegeven."}), 400
+    if term not in ("short", "medium", "long"):
+        term = "medium"
+
+    try:
+        from src.data import stock_fetcher
+        from src.analysis import stock_analyzer
+
+        df = stock_fetcher.get_ohlcv(symbol, period="2y")
+        price = stock_fetcher.get_current_price(symbol)
+        analysis = stock_analyzer.analyze_stock(symbol, df, price, term=term)
+        return jsonify(analysis.to_dict())
+    except Exception as e:
+        return jsonify({"error": f"Analyse mislukt voor {symbol}: {e}"}), 500
 
 
 def start_dashboard(host: str = "0.0.0.0", port: int = 5000, debug: bool = False):

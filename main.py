@@ -4,10 +4,12 @@ AI Koop-Signaal Machine - Aandelen & Crypto Monitor
 ====================================================
 
 Gebruik:
-  python main.py --scan        Eenmalige scan van alle assets, toont signalen
-  python main.py --service     Realtime monitoring (elke minuut), stuurt email bij signaal
-  python main.py --backtest    Test de strategie op historische data (win-rate validatie)
-  python main.py --dashboard   Live web dashboard op http://localhost:5000
+  python main.py --scan                       Eenmalige scan van alle assets, toont signalen
+  python main.py --service                    Realtime monitoring (elke minuut), stuurt email bij signaal
+  python main.py --backtest                   Test de strategie op historische data (win-rate validatie)
+  python main.py --dashboard                  Live web dashboard op http://localhost:5000
+  python main.py --analyze AAPL               Volledig 5-delig analyserapport (Koop/Hold/Verkoop)
+  python main.py --analyze AAPL --term long   Termijn: short | medium | long
 
 Setup:
   1. pip install -r requirements.txt
@@ -29,6 +31,7 @@ load_dotenv()
 
 from src.data import crypto_fetcher, stock_fetcher
 from src.analysis import signals
+from src.analysis import stock_analyzer
 from src.notifications import email_notifier
 from src.backtest import engine as backtest_engine
 
@@ -258,31 +261,56 @@ def run_backtest(config: dict) -> None:
     backtest_engine.print_backtest_summary(results)
 
 
+def run_analyze(symbol: str, term: str) -> None:
+    """Genereer een uitgebreid 5-delig analyserapport voor één aandeel."""
+    symbol = symbol.upper().strip()
+    print(f"\nAandelen-analyse voor {symbol} ({term})...")
+    print("  Historische data ophalen...", end=" ", flush=True)
+    df = stock_fetcher.get_ohlcv(symbol, period="2y")
+    print("klaar.")
+    print("  Huidige prijs ophalen...", end=" ", flush=True)
+    price = stock_fetcher.get_current_price(symbol)
+    print(f"${price:,.2f}")
+    print("  Fundamentals en sectorgenoten ophalen...", end=" ", flush=True)
+    analysis = stock_analyzer.analyze_stock(symbol, df, price, term=term)
+    print("klaar.\n")
+    print(stock_analyzer.render_text(analysis))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Koop-Signaal Machine \u2014 Crypto & Aandelen Monitor",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Voorbeelden:
-  python main.py --scan        Eenmalige scan
-  python main.py --service     Start realtime monitoring
-  python main.py --backtest    Valideer win-rate op historische data
-  python main.py --dashboard   Open web dashboard in browser
+  python main.py --scan                       Eenmalige scan
+  python main.py --service                    Start realtime monitoring
+  python main.py --backtest                   Valideer win-rate op historische data
+  python main.py --dashboard                  Open web dashboard in browser
+  python main.py --analyze AAPL               5-delig analyserapport (Koop/Hold/Verkoop)
+  python main.py --analyze NVDA --term long   Termijn: short | medium | long
         """,
     )
     parser.add_argument("--scan", action="store_true", help="Eenmalige scan van alle assets")
     parser.add_argument("--service", action="store_true", help="Start realtime monitoring service")
     parser.add_argument("--backtest", action="store_true", help="Backtest strategie op historische data")
     parser.add_argument("--dashboard", action="store_true", help="Start web dashboard op http://localhost:5000")
+    parser.add_argument("--analyze", metavar="SYMBOL", help="Genereer uitgebreid 5-delig rapport voor één aandeel (bv. AAPL)")
+    parser.add_argument("--term", choices=["short", "medium", "long"], default="medium",
+                        help="Termijn voor --analyze: short (1-3 mnd) | medium (6-12 mnd) | long (2-3 jr)")
     parser.add_argument("--port", type=int, default=5000, help="Poort voor web dashboard (standaard: 5000)")
     parser.add_argument("--config", default="config/settings.yaml", help="Pad naar configuratiebestand")
 
     args = parser.parse_args()
 
-    if not (args.scan or args.service or args.backtest or args.dashboard):
+    if not (args.scan or args.service or args.backtest or args.dashboard or args.analyze):
         parser.print_help()
-        print("\nGebruik --scan, --service, --backtest of --dashboard")
+        print("\nGebruik --scan, --service, --backtest, --dashboard of --analyze SYMBOL")
         sys.exit(1)
+
+    if args.analyze:
+        run_analyze(args.analyze, args.term)
+        return
 
     config = load_config(args.config)
 
