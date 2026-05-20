@@ -226,9 +226,8 @@ def build_technical_snapshot(df: pd.DataFrame, current_price: float) -> Technica
     sma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
 
     try:
-        import pandas_ta as ta
-        rsi_series = ta.rsi(close, length=14)
-        rsi_val = float(rsi_series.dropna().iloc[-1]) if rsi_series is not None and not rsi_series.empty else None
+        rsi = ind.rsi_series(close, length=14).dropna()
+        rsi_val = float(rsi.iloc[-1]) if not rsi.empty else None
     except Exception:
         rsi_val = None
 
